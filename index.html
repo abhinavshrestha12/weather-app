@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Detroit Weather</title>
+	<style>
+		:root {
+			--ink: #17232d;
+			--muted: #61717c;
+			--line: rgba(23, 35, 45, 0.12);
+			--paper: #f5f1e8;
+			--card: rgba(255, 255, 255, 0.72);
+			--accent: #db6547;
+			--accent-dark: #a8422f;
+			--sun: #f2b94b;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			color: var(--ink);
+			font-family: Georgia, "Times New Roman", serif;
+			background:
+				radial-gradient(circle at 8% 8%, rgba(242, 185, 75, 0.38), transparent 26rem),
+				radial-gradient(circle at 92% 92%, rgba(74, 137, 140, 0.26), transparent 24rem),
+				var(--paper);
+		}
+
+		.shell {
+			width: min(1080px, calc(100% - 40px));
+			margin: 0 auto;
+			padding: 34px 0 42px;
+		}
+
+		header {
+			display: flex;
+			align-items: flex-start;
+			justify-content: space-between;
+			gap: 24px;
+			margin-bottom: 42px;
+		}
+
+		.eyebrow {
+			margin: 0 0 8px;
+			color: var(--accent-dark);
+			font: 700 0.72rem/1.2 Arial, sans-serif;
+			letter-spacing: 0.16em;
+			text-transform: uppercase;
+		}
+
+		h1, h2, p { margin-top: 0; }
+		h1 { margin-bottom: 0; font-size: clamp(2.8rem, 7vw, 5.8rem); line-height: 0.9; font-weight: 400; letter-spacing: -0.04em; }
+		h2 { margin-bottom: 8px; font-size: 1.35rem; font-weight: 400; }
+
+		.refresh {
+			border: 1px solid var(--ink);
+			border-radius: 999px;
+			padding: 12px 17px;
+			color: var(--ink);
+			background: transparent;
+			font: 700 0.78rem Arial, sans-serif;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			cursor: pointer;
+			transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+		}
+
+		.refresh:hover { color: #fff; background: var(--ink); transform: translateY(-2px); }
+		.refresh:disabled { opacity: 0.5; cursor: wait; transform: none; }
+		.search { display: flex; max-width: 470px; margin: 0 0 34px; border-bottom: 1px solid var(--ink); }
+		.search input { width: 100%; padding: 13px 4px; border: 0; outline: 0; color: var(--ink); background: transparent; font: 1.05rem Georgia, serif; }
+		.search input::placeholder { color: var(--muted); }
+		.search button { border: 0; padding: 0 4px 0 14px; color: var(--accent-dark); background: transparent; font: 700 0.75rem Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+		.search button:hover { color: var(--ink); }
+
+		.hero {
+			display: grid;
+			grid-template-columns: 1.25fr 0.75fr;
+			gap: 18px;
+			margin-bottom: 18px;
+		}
+
+		.current, .details, .forecast {
+			border: 1px solid var(--line);
+			background: var(--card);
+			backdrop-filter: blur(12px);
+		}
+
+		.current {
+			min-height: 340px;
+			padding: clamp(26px, 5vw, 50px);
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			border-radius: 4px;
+			overflow: hidden;
+			position: relative;
+		}
+
+		.current::after {
+			content: "";
+			width: 180px;
+			height: 180px;
+			position: absolute;
+			top: -50px;
+			right: -20px;
+			border-radius: 50%;
+			background: var(--sun);
+			opacity: 0.85;
+			box-shadow: 0 0 0 18px rgba(242, 185, 75, 0.12), 0 0 0 38px rgba(242, 185, 75, 0.08);
+		}
+
+		.place { position: relative; z-index: 1; }
+		.place p { margin-bottom: 5px; color: var(--muted); font: 700 0.75rem Arial, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
+		.temperature { margin: 0; font-size: clamp(5rem, 13vw, 10rem); line-height: 0.86; letter-spacing: -0.08em; font-weight: 400; position: relative; z-index: 1; }
+		.temperature sup { font-size: 0.25em; top: -2.1em; position: relative; letter-spacing: 0; }
+		.condition { margin: 22px 0 0; font-size: 1.45rem; position: relative; z-index: 1; }
+		.updated { margin: 8px 0 0; color: var(--muted); font: 0.78rem Arial, sans-serif; position: relative; z-index: 1; }
+
+		.details { padding: 25px; border-radius: 4px; }
+		.details-title { color: var(--muted); font: 700 0.72rem Arial, sans-serif; letter-spacing: 0.13em; text-transform: uppercase; }
+		.metric-list { margin: 26px 0 0; }
+		.metric { display: flex; justify-content: space-between; gap: 16px; padding: 17px 0; border-bottom: 1px solid var(--line); }
+		.metric:first-child { padding-top: 0; }
+		.metric:last-child { border-bottom: 0; }
+		.metric dt { color: var(--muted); font: 0.85rem Arial, sans-serif; }
+		.metric dd { margin: 0; font-size: 1.2rem; }
+		.clothing { display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; align-items: center; margin-bottom: 18px; padding: 25px; border: 1px solid var(--line); border-radius: 4px; background: rgba(255, 255, 255, 0.58); }
+		.clothing-art { display: grid; place-items: center; min-height: 160px; border-radius: 50%; background: rgba(242, 185, 75, 0.2); font-size: clamp(5rem, 12vw, 8rem); line-height: 1; }
+		.clothing-label { margin-bottom: 8px; color: var(--accent-dark); font: 700 0.72rem Arial, sans-serif; letter-spacing: 0.13em; text-transform: uppercase; }
+		.clothing h2 { margin-bottom: 10px; }
+		.clothing-copy { margin-bottom: 0; color: var(--muted); font: 0.9rem/1.5 Arial, sans-serif; }
+
+		.forecast { padding: 25px; border-radius: 4px; }
+		.forecast-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+		.forecast-header p { margin: 0; color: var(--muted); font: 0.78rem Arial, sans-serif; }
+		.days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+		.day { padding: 17px 12px; border-left: 1px solid var(--line); }
+		.day:first-child { border-left: 0; }
+		.day-name { margin-bottom: 18px; font: 700 0.72rem Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
+		.day-icon { margin-bottom: 14px; color: var(--accent); font-size: 1.5rem; }
+		.day-condition { min-height: 32px; margin: 0 0 14px; color: var(--muted); font: 0.75rem/1.25 Arial, sans-serif; }
+		.day-temp { font-size: 1.35rem; }
+		.day-low { margin-left: 6px; color: var(--muted); font-size: 0.95rem; }
+
+		.status { min-height: 20px; margin-top: 16px; color: var(--accent-dark); font: 0.8rem Arial, sans-serif; }
+		@media (max-width: 720px) {
+			.shell { width: min(100% - 24px, 560px); padding-top: 24px; }
+			header { margin-bottom: 30px; }
+			.hero { grid-template-columns: 1fr; }
+			.clothing { grid-template-columns: 0.7fr 1fr; }
+			.current { min-height: 320px; }
+			.days { grid-template-columns: repeat(5, minmax(76px, 1fr)); overflow-x: auto; }
+			.day { min-width: 76px; }
+			.forecast { overflow: hidden; }
+		}
+	</style>
+</head>
+<body>
+	<main class="shell">
+		<header>
+			<div>
+				<p class="eyebrow">Local conditions</p>
+				<h1 id="location-name">Detroit today.</h1>
+			</div>
+			<button class="refresh" id="refresh" type="button" aria-label="Refresh weather">Refresh ↻</button>
+		</header>
+		<form class="search" id="search-form">
+			<input id="city-input" type="search" placeholder="Search for a city..." aria-label="Search for a city" autocomplete="off">
+			<button type="submit">Search</button>
+		</form>
+
+		<section class="hero" aria-live="polite">
+			<article class="current">
+				<div class="place">
+					<p id="coordinates">42.33° N · 83.05° W</p>
+					<h2 id="date">Loading date...</h2>
+				</div>
+				<div>
+					<p class="temperature"><span id="temperature">--</span><sup>°C</sup></p>
+					<p class="condition" id="condition">Fetching conditions...</p>
+					<p class="updated" id="updated">Connecting to Open-Meteo</p>
+				</div>
+			</article>
+
+			<aside class="details">
+				<p class="details-title">Right now</p>
+				<dl class="metric-list">
+					<div class="metric"><dt>Feels like</dt><dd id="feels-like">--</dd></div>
+					<div class="metric"><dt>Wind</dt><dd id="wind">--</dd></div>
+					<div class="metric"><dt>Humidity</dt><dd id="humidity">--</dd></div>
+					<div class="metric"><dt>Rain chance</dt><dd id="rain">--</dd></div>
+				</dl>
+			</aside>
+		</section>
+
+		<section class="clothing" aria-live="polite">
+			<div class="clothing-art" id="clothing-art" role="img" aria-label="Suggested clothing">🧥</div>
+			<div>
+				<p class="clothing-label">What to wear</p>
+				<h2 id="clothing-title">A light jacket</h2>
+				<p class="clothing-copy" id="clothing-copy">Loading a suggestion for today's conditions.</p>
+			</div>
+		</section>
+
+		<section class="forecast">
+			<div class="forecast-header">
+				<h2>Five-day outlook</h2>
+				<p>Day / night temperatures</p>
+			</div>
+			<div class="days" id="days"></div>
+			<div class="status" id="status" role="status"></div>
+		</section>
+	</main>
+
+	<script>
+		const DEFAULT_LOCATION = { name: "Detroit", latitude: 42.33, longitude: -83.05, country: "United States" };
+		let selectedLocation = DEFAULT_LOCATION;
+		const weatherLabels = { 0: "Clear skies", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Foggy", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Rain showers", 81: "Rain showers", 82: "Heavy showers", 95: "Thunderstorms", 96: "Thunderstorms", 99: "Thunderstorms" };
+		const weatherIcons = { 0: "○", 1: "◒", 2: "◒", 3: "☁", 45: "≋", 48: "≋", 51: "╱", 53: "╱", 55: "╱", 61: "╱", 63: "╱", 65: "╱", 71: "✳", 73: "✳", 75: "✳", 80: "╱", 81: "╱", 82: "╱", 95: "ϟ", 96: "ϟ", 99: "ϟ" };
+		const $ = (id) => document.getElementById(id);
+
+		function formatDay(dateString, index) {
+			if (index === 0) return "Today";
+			return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(`${dateString}T12:00:00`));
+		}
+
+		function displayTemperature(value) { return `${Math.round(value)}°`; }
+
+		function weatherUrl(location) {
+			const params = new URLSearchParams({ latitude: location.latitude, longitude: location.longitude, current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation_probability,wind_speed_10m,weather_code", daily: "weather_code,temperature_2m_max,temperature_2m_min", temperature_unit: "celsius", wind_speed_unit: "kmh", timezone: "auto", forecast_days: "5" });
+			return `https://api.open-meteo.com/v1/forecast?${params}`;
+		}
+
+		function renderClothing(current) {
+			const temperature = current.temperature_2m;
+			const isWet = current.precipitation_probability >= 45 || [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(current.weather_code);
+			let suggestion;
+			if (temperature <= 2) suggestion = { icon: "🧣", title: "Bundle up", copy: "Wear a warm coat, scarf, gloves, and insulated shoes. It is cold enough for extra layers." };
+			else if (temperature <= 10) suggestion = { icon: "🧥", title: "Layer with a jacket", copy: "A warm jacket or coat over a sweater will keep you comfortable today." };
+			else if (temperature <= 18) suggestion = { icon: "🧢", title: "Light layers", copy: "A long-sleeve top with a light jacket is a good match for this cool weather." };
+			else if (temperature <= 26) suggestion = { icon: "👕", title: "Comfortable and light", copy: "A T-shirt with light trousers should feel right for these mild conditions." };
+			else suggestion = { icon: "🩳", title: "Keep it breezy", copy: "Choose breathable clothes, sunglasses, and comfortable shoes for the heat." };
+			if (isWet) suggestion.copy += " Bring an umbrella or choose a waterproof outer layer.";
+			$("clothing-art").textContent = suggestion.icon;
+			$("clothing-art").setAttribute("aria-label", suggestion.title);
+			$("clothing-title").textContent = suggestion.title;
+			$("clothing-copy").textContent = suggestion.copy;
+		}
+
+		function renderWeather(data) {
+			const current = data.current;
+			const units = data.current_units;
+			const code = current.weather_code;
+			const now = new Date(current.time);
+			$("coordinates").textContent = `${selectedLocation.latitude.toFixed(2)}° N · ${Math.abs(selectedLocation.longitude).toFixed(2)}° W`;
+			$("location-name").textContent = `${selectedLocation.name} today.`;
+			$("date").textContent = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(now);
+			$("temperature").textContent = Math.round(current.temperature_2m);
+			$("condition").textContent = weatherLabels[code] || "Changing skies";
+			$("updated").textContent = `Updated ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+			$("feels-like").textContent = `${Math.round(current.apparent_temperature)}${units.apparent_temperature}`;
+			$("wind").textContent = `${Math.round(current.wind_speed_10m)} ${units.wind_speed_10m}`;
+			$("humidity").textContent = `${current.relative_humidity_2m}${units.relative_humidity_2m}`;
+			$("rain").textContent = `${current.precipitation_probability}${units.precipitation_probability}`;
+			renderClothing(current);
+			$("days").innerHTML = data.daily.time.map((day, index) => { const code = data.daily.weather_code[index]; return `<article class="day"><div class="day-name">${formatDay(day, index)}</div><div class="day-icon" aria-hidden="true">${weatherIcons[code] || "○"}</div><p class="day-condition">${weatherLabels[code] || "Changing skies"}</p><span class="day-temp">${displayTemperature(data.daily.temperature_2m_max[index])}</span><span class="day-low">${displayTemperature(data.daily.temperature_2m_min[index])}</span></article>`; }).join("");
+		}
+
+		async function loadWeather() {
+			const button = $("refresh");
+			button.disabled = true;
+			$("status").textContent = "Updating forecast...";
+			try {
+				const response = await fetch(weatherUrl(selectedLocation));
+				if (!response.ok) throw new Error("Weather service unavailable");
+				renderWeather(await response.json());
+				$("status").textContent = "Live data from Open-Meteo";
+			} catch (error) {
+				$("status").textContent = "Could not load weather. Check your connection and try again.";
+				$("condition").textContent = "Weather unavailable";
+			} finally {
+				button.disabled = false;
+			}
+		}
+
+		async function searchCity(event) {
+			event.preventDefault();
+			const query = $("city-input").value.trim();
+			if (!query) return;
+			$("status").textContent = "Finding that city...";
+			try {
+				const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+				if (!response.ok) throw new Error("City search unavailable");
+				const result = await response.json();
+				if (!result.results || !result.results.length) throw new Error("City not found");
+				const city = result.results[0];
+				selectedLocation = { name: city.name, latitude: city.latitude, longitude: city.longitude, country: city.country };
+				$("location-name").textContent = `${city.name} today.`;
+				await loadWeather();
+			} catch (error) {
+				$("status").textContent = "City not found. Try a different spelling or nearby city.";
+			}
+		}
+
+		$("refresh").addEventListener("click", loadWeather);
+		$("search-form").addEventListener("submit", searchCity);
+		loadWeather();
+	</script>
+</body>
+</html>
+
